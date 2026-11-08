@@ -1,0 +1,66 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # 手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: x86_64-pc-windows-msvc
+      
+      - name: Install .NET SDK (required for some crates)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Build Release
+        run: cargo build --release --target x86_64-pc-windows-msvc
+        shell: bash
+      
+      - name: Create Package
+        run: |
+          mkdir dist
+          Copy-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe" "dist\"
+          
+          @fileinfo = Get-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe"
+          $sizeMB = [math]::Round($fileinfo.Length / 1MB, 2)
+          
+          Write-Output "# Emby GPUI Client Windows Build" | Out-File dist\README.txt -Append
+          Write-Output "Version: 0.1.0" | Out-File dist\README.txt -Append  
+          Write-Output "Build Date: $((Get-Date).ToString('yyyy-MM-dd'))" | Out-File dist\README.txt -Append
+          Write-Output "Binary Size: ${sizeMB} MB" | Out-File dist\README.txt -Append
+          Write-Output "Requirements: Windows 10 1903+, DirectX 11 GPU" | Out-File dist\README.txt -Append
+      
+      - name: Compress to ZIP
+        run: Compress-Archive -Path "dist\*" -DestinationPath "emby-gpui-windows.zip" -Force
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: emby-gpui-windows-release
+          path: emby-gpui-windows.zip
+          retention-days: 30
+      
+      - name: Verify Binary Size
+        run: |
+          $binary = Get-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe"
+          Write-Host "✅ Build successful!"
+          Write-Host "   Binary size: $($binary.Length / 1MB) MB"
+          Write-Host "   Download at: Actions → Artifacts"
