@@ -1,0 +1,113 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Test on multiple platforms
+  test:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+        
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Run Format Check
+        run: cargo fmt --check
+      
+      - name: Run Tests
+        run: cargo test --lib
+      
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          fail_ci_if_error: false
+  
+  # Build Windows release
+  build-windows:
+    needs: [test]
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: x86_64-pc-windows-msvc
+      
+      - name: Build Release
+        run: cargo build --release --target x86_64-pc-windows-msvc
+      
+      - name: Create Package
+        run: |
+          mkdir dist
+          Copy-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe" "dist\"
+          Compress-Archive -Path "dist\*" -DestinationPath "emby-gpui-test.zip" -Force
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: emby-gpui-windows
+          path: emby-gpui-test.zip
+  
+  # Build Linux binary
+  build-linux:
+    needs: [test]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: x86_64-unknown-linux-gnu
+      
+      - name: Build Linux
+        run: cargo build --release --target x86_64-unknown-linux-gnu
+      
+      - name: Create Package
+        run: |
+          mkdir dist
+          cp target/x86_64-unknown-linux-gnu/release/emby-gpui dist/
+          tar czf emby-gpui-linux.tar.gz dist/
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: emby-gpui-linux
+          path: emby-gpui-linux.tar.gz
+```
+
+---
+
+## 🚀 **最简单的方法：用现有的 Nocturne 项目**
+
+既然你是想学习 Emby 客户端开发，不如直接使用 **Nocturne** 作为参考:
+
+<tool_call>
+<function=Bash>
+<parameter=command>
+git clone --depth=1 --branch v4.2.0 https://github.com/tokudai-vs/nocturne.git /tmp/nocturne-reference
