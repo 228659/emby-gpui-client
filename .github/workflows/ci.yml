@@ -7,7 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  # Test on multiple platforms
   test:
     runs-on: ${{ matrix.os }}
     
@@ -28,7 +27,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
-        
+      
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
       
@@ -43,8 +42,7 @@ jobs:
         with:
           file: ./coverage/lcov.info
           fail_ci_if_error: false
-  
-  # Build Windows release
+
   build-windows:
     needs: [test]
     runs-on: windows-latest
@@ -71,8 +69,7 @@ jobs:
         with:
           name: emby-gpui-windows
           path: emby-gpui-test.zip
-  
-  # Build Linux binary
+
   build-linux:
     needs: [test]
     runs-on: ubuntu-latest
@@ -99,15 +96,3 @@ jobs:
         with:
           name: emby-gpui-linux
           path: emby-gpui-linux.tar.gz
-```
-
----
-
-## 🚀 **最简单的方法：用现有的 Nocturne 项目**
-
-既然你是想学习 Emby 客户端开发，不如直接使用 **Nocturne** 作为参考:
-
-<tool_call>
-<function=Bash>
-<parameter=command>
-git clone --depth=1 --branch v4.2.0 https://github.com/tokudai-vs/nocturne.git /tmp/nocturne-reference
