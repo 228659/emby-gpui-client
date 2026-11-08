@@ -11,8 +11,6 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: emby-gpui-client
       
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -33,10 +31,12 @@ jobs:
             ${{ runner.os }}-cargo-
       
       - name: Build Release
+        working-directory: ./emby-gpui-client
         run: cargo build --release --target x86_64-pc-windows-msvc
         shell: bash
       
       - name: Create Package
+        working-directory: ./emby-gpui-client
         run: |
           mkdir dist
           Copy-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe" "dist\"
@@ -51,7 +51,8 @@ jobs:
           Write-Output "Requirements: Windows 10 1903+, DirectX 11 GPU" | Out-File dist\README.txt -Append
       
       - name: Compress to ZIP
-        run: Compress-Archive -Path "dist\*" -DestinationPath "emby-gpui-windows.zip" -Force
+        working-directory: ./emby-gpui-client
+        run: Compress-Archive -Path "dist\*" -DestinationPath "../emby-gpui-windows.zip" -Force
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -61,8 +62,13 @@ jobs:
           retention-days: 30
       
       - name: Verify Binary Size
+        working-directory: ./emby-gpui-client
         run: |
-          $binary = Get-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe"
-          Write-Host "✅ Build successful!"
-          Write-Host "   Binary size: $($binary.Length / 1MB) MB"
-          Write-Host "   Download at: Actions → Artifacts"
+          if (Test-Path "target\x86_64-pc-windows-msvc\release\emby-gpui.exe") {
+            $binary = Get-Item "target\x86_64-pc-windows-msvc\release\emby-gpui.exe"
+            Write-Host "✅ Build successful!"
+            Write-Host "   Binary size: $($binary.Length / 1MB) MB"
+            Write-Host "   Download at: Actions → Artifacts"
+          } else {
+            Write-Host "⚠️ Binary not found in expected location"
+          }
